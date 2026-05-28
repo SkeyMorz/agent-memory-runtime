@@ -7,11 +7,11 @@
 <p align="center">
   <img src="https://img.shields.io/badge/python-%E2%89%A53.10-blue?logo=python&logoColor=white" alt="Python">
   <img src="https://img.shields.io/badge/retrieval-TF--IDF%20%2B%20cosine-green" alt="Retrieval">
-  <img src="https://img.shields.io/badge/layers-Ingestion%20%7C%20Retrieval%20%7C%20Ranking%20%7C%20Consolidation-orange" alt="Layers">
-  <img src="https://img.shields.io/badge/tests-18%20passed-brightgreen" alt="Tests">
+  <img src="https://img.shields.io/badge/layers-Ingestion%20%7C%20Retrieval%20%7C%20Ranking%20%7C%20Consolidation%20%7C%20Context-orange" alt="Layers">
+  <img src="https://img.shields.io/badge/tests-26%20passed-brightgreen" alt="Tests">
 </p>
 
-- 📝 **Project Status:** v0.4 — ingestion → retrieval → ranking → consolidation done, context builder next
+- 📝 **Project Status:** v0.5 — full 5-layer pipeline done, FastAPI service next
 - 🏗️ **Architecture:** 5-layer memory pipeline (ingestion → retrieval → ranking → consolidation → context)
 
 agent-memory-runtime 是一个可插拔的 Agent 长期记忆运行时。它不绑定任何 Agent 框架——就像数据库之于后端服务，任何 LLM Agent 都可以接入，获得跨会话的持久记忆能力。
@@ -55,7 +55,7 @@ agent-memory-runtime 的思路：**把记忆从 prompt 里抽出来，变成独�
                            └──────────────────┘
 ```
 
-### 5 层管道
+### 5 层管道（全部完成）
 
 | 层 | 做什么 | 代码位置 | 状态 |
 |----|--------|----------|------|
@@ -63,13 +63,14 @@ agent-memory-runtime 的思路：**把记忆从 prompt 里抽出来，变成独�
 | Retrieval | 语义搜索（TF-IDF + cosine similarity） | `memory/retrieval/` | ✅ done |
 | Ranking | 相关性 + 新鲜度混合排序（3 种策略） | `memory/ranking/` | ✅ done |
 | Consolidation | 合并相似记忆，去重去噪 | `memory/consolidation/` | ✅ done |
-| Context Builder | 把检索结果拼成 prompt 可用的上下文 | `memory/context/` | 📋 planned |
+| Context Builder | 检索结果 → prompt 可用的自然语言文本（3 种模板） | `memory/context/` | ✅ done |
 
 ---
 
 ## 📰 News
 
-- **2026-05-28** — v0.4 released: MemoryConsolidator — automatic similar memory detection & merge, 18 tests passing.
+- **2026-05-28** — v0.5 released: ContextBuilder with 3 templates (default / compact / system_prompt), token budget control, 26 tests passing.
+- **2026-05-28** — v0.4 released: MemoryConsolidator — automatic similar memory detection & merge.
 - **2026-05-28** — v0.3 released: MemoryRanker with three strategies (semantic / recency / hybrid).
 - **2026-05-28** — v0.2 released: MemoryRetriever with TF-IDF + cosine similarity semantic search.
 - **2026-05-28** — v0.1 released: MemoryStore with structured CRUD, id + metadata + timestamp per memory.
@@ -90,17 +91,20 @@ agent-memory-runtime/
 │   │   └── ranker.py               # MemoryRanker: semantic / recency / hybrid
 │   ├── consolidation/
 │   │   └── consolidator.py         # MemoryConsolidator: merge & dedup
-│   ├── context/                    # (planned v0.5) build prompt context
+│   ├── context/
+│   │   └── builder.py              # ContextBuilder: prompt-ready text output
 │   └── storage/                    # (planned) persistent backends
 ├── examples/
 │   ├── basic_usage.py              # v0.1: add & get_all
 │   ├── semantic_retrieval.py       # v0.2: search with TF-IDF
 │   ├── memory_ranking.py           # v0.3: three ranking strategies
-│   └── memory_consolidation.py     # v0.4: merge similar memories
+│   ├── memory_consolidation.py     # v0.4: merge similar memories
+│   └── context_builder.py          # v0.5: 3 template outputs
 ├── tests/
 │   ├── test_retrieval.py           # 4 tests
 │   ├── test_ranking.py             # 6 tests
-│   └── test_consolidation.py       # 8 tests
+│   ├── test_consolidation.py       # 8 tests
+│   └── test_context.py             # 8 tests
 ├── docs/
 ├── README.md
 └── LICENSE
@@ -123,21 +127,24 @@ cd agent-memory-runtime
 pip install -e .
 ```
 
-### Run — 完整 4 层管道
+### Run — 完整 5 层管道
 
 ```python
 from memory.ingestion.memory_store import MemoryStore
 from memory.retrieval.retriever import MemoryRetriever
 from memory.ranking.ranker import MemoryRanker
 from memory.consolidation.consolidator import MemoryConsolidator
+from memory.context.builder import ContextBuilder
 
 store = MemoryStore()
 
 # 第 1 次会话：存入记忆
-store.add("User likes Japanese food, especially ramen and sushi")
-store.add("User loves Japanese cuisine like ramen and sushi")   # 相似记忆
-store.add("User lives in Tokyo, Japan")
-store.add("User is a Python software engineer")
+store.add("User likes Japanese food, especially ramen and sushi",
+          metadata={"category": "preference"})
+store.add("User loves Japanese cuisine like ramen and sushi",
+          metadata={"category": "preference"})
+store.add("User lives in Tokyo, Japan", metadata={"category": "location"})
+store.add("User is a Python software engineer", metadata={"category": "professional"})
 
 # 清理重复记忆
 consolidator = MemoryConsolidator()
@@ -151,8 +158,19 @@ ranker = MemoryRanker()
 results = retriever.search("What food does the user like?")
 ranked = ranker.rerank(results, strategy="hybrid")
 
-for m in ranked:
-    print(f"[{m['score']:.4f}] {m['content']}")
+# 生成 prompt 上下文
+builder = ContextBuilder()
+context = builder.build(ranked, query="Recommend a restaurant", template="default")
+print(context)
+```
+
+输出：
+```
+## Relevant Memories
+
+- [just now] [preference] (0.45) User likes Japanese food, especially ramen and sushi
+
+Use the above memories to inform your response to: Recommend a restaurant
 ```
 
 ### 🚩 Ranking Strategies
@@ -162,6 +180,14 @@ for m in ranked:
 | `semantic` | Pure TF-IDF relevance order | Exact keyword queries |
 | `recency` | Exponential decay by age (halflife: 7 days) | Prefer fresh information |
 | `hybrid` | 0.7 × semantic + 0.3 × recency (default) | Balance relevance and freshness |
+
+### Context Templates
+
+| Template | Purpose | Example Output |
+|----------|---------|----------------|
+| `default` | General conversation | `[just now] [preference] (0.42) User likes ramen` |
+| `compact` | Tight token budget | Grouped by category, semicolon-separated |
+| `system_prompt` | System prompt injection | `## User Profile` + relative timestamps |
 
 ---
 
@@ -173,8 +199,8 @@ for m in ranked:
 | v0.2 | MemoryRetriever — TF-IDF semantic search | ✅ done |
 | v0.3 | MemoryRanker — 3 ranking strategies | ✅ done |
 | v0.4 | MemoryConsolidator — merge similar, dedup | ✅ done |
-| v0.5 | Context builder — assemble prompt context | 🔜 next |
-| v0.6 | FastAPI service — REST API for memory runtime | 📋 planned |
+| v0.5 | ContextBuilder — 3 templates, token budget, relative time | ✅ done |
+| v0.6 | FastAPI service — REST API for memory runtime | 🔜 next |
 | v1.0 | Production-ready runtime — persistent storage, embeddings | 📋 planned |
 
 ---
@@ -195,6 +221,14 @@ tests/test_consolidation.py::test_high_threshold_preserves_more PASSED
 tests/test_consolidation.py::test_low_threshold_merges_more PASSED
 tests/test_consolidation.py::test_merge_preserves_longer_content PASSED
 tests/test_consolidation.py::test_merge_combines_non_overlapping_content PASSED
+tests/test_context.py::test_build_default_with_memories PASSED
+tests/test_context.py::test_build_empty PASSED
+tests/test_context.py::test_build_compact_groups_by_category PASSED
+tests/test_context.py::test_build_system_prompt PASSED
+tests/test_context.py::test_build_compact_empty PASSED
+tests/test_context.py::test_build_system_prompt_empty PASSED
+tests/test_context.py::test_token_budget_truncation PASSED
+tests/test_context.py::test_relative_time_formatting PASSED
 tests/test_ranking.py::test_rerank_empty PASSED
 tests/test_ranking.py::test_semantic_preserves_order PASSED
 tests/test_ranking.py::test_recency_boosts_newer PASSED
