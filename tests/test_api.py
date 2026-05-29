@@ -96,3 +96,39 @@ class TestMemoryAPI:
         })
         assert resp.status_code == 200
         assert "preference" in resp.json()["context"]
+
+    def test_save_and_load(self):
+        store.add("test memory", {"category": "test"})
+        filepath = "test_memory_data.json"
+        resp = client.post(f"/save?filepath={filepath}")
+        assert resp.status_code == 200
+        assert resp.json()["count"] == 1
+
+        store.clear()
+        assert len(store) == 0
+
+        resp = client.post(f"/load?filepath={filepath}")
+        assert resp.status_code == 200
+        assert store.get_all()[0]["content"] == "test memory"
+
+        import os
+        os.remove(filepath)
+
+    def test_search_embedding_engine(self):
+        client.post("/memory", json={"content": "User likes Japanese food"})
+        client.post("/memory", json={"content": "User lives in Tokyo"})
+        resp = client.get("/search?q=food&use_embeddings=true")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["engine"] in ("embedding", "tfidf")
+        assert len(data["results"]) >= 1
+
+    def test_health_check(self):
+        resp = client.get("/health")
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "ok"
+
+    def test_api_version(self):
+        resp = client.get("/openapi.json")
+        assert resp.status_code == 200
+        assert resp.json()["info"]["version"] == "1.0.0"
