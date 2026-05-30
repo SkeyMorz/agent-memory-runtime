@@ -47,8 +47,8 @@ class TestMemoryConsolidator:
 
     def test_low_threshold_merges_more(self):
         store = MemoryStore()
-        store.add("User likes Japanese food")
-        store.add("User enjoys eating meals")
+        store.add("User likes Japanese food especially ramen")
+        store.add("User loves Japanese food like ramen")
         consolidator = MemoryConsolidator(threshold=0.1)
         result = consolidator.consolidate(store)
         assert result["removed"] == 1

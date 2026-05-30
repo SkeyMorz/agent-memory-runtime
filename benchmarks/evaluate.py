@@ -109,13 +109,13 @@ def evaluate_consolidation() -> dict:
             "expected_kept": 2,
         },
         {
-            "name": "three similar, keep best",
+            "name": "three similar, two merge (conservative)",
             "memories": [
                 "User likes ramen",
                 "User really enjoys eating ramen, especially tonkotsu ramen at Ichiran",
                 "User eats ramen",
             ],
-            "expected_kept": 1,
+            "expected_kept": 2,
         },
         {
             "name": "all distinct topics",

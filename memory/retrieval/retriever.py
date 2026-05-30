@@ -6,7 +6,10 @@ import numpy as np
 class MemoryRetriever:
     def __init__(self, store):
         self.store = store
-        self._vectorizer = TfidfVectorizer(stop_words="english")
+        self._vectorizer = TfidfVectorizer(
+            analyzer="char_wb",
+            ngram_range=(2, 4),
+        )
 
     def search(self, query: str, top_k: int = 5) -> list[dict]:
         memories = self.store.get_all()

@@ -1,12 +1,26 @@
+import re
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
 
 
+def _jaccard_similarity(text_a: str, text_b: str) -> float:
+    words_a = set(re.findall(r"[a-zA-Z]+", text_a.lower()))
+    words_b = set(re.findall(r"[a-zA-Z]+", text_b.lower()))
+    if not words_a or not words_b:
+        return 0.0
+    return len(words_a & words_b) / len(words_a | words_b)
+
+
 class MemoryConsolidator:
-    def __init__(self, threshold: float = 0.45):
+    def __init__(self, threshold: float = 0.45, jaccard_min: float = 0.15):
         self.threshold = threshold
-        self._vectorizer = TfidfVectorizer(use_idf=False)
+        self.jaccard_min = jaccard_min
+        self._vectorizer = TfidfVectorizer(
+            use_idf=False,
+            analyzer="char_wb",
+            ngram_range=(2, 4),
+        )
 
     def consolidate(self, store) -> dict:
         memories = store.get_all()
@@ -30,6 +44,11 @@ class MemoryConsolidator:
                 if j in to_remove:
                     continue
                 if sim_matrix[i][j] >= self.threshold:
+                    jaccard = _jaccard_similarity(
+                        memories[i]["content"], memories[j]["content"]
+                    )
+                    if jaccard < self.jaccard_min:
+                        continue
                     winner, loser = self._pick_winner(memories[i], memories[j], i, j)
                     if loser == j:
                         self._merge_into(memories[i], memories[j])
