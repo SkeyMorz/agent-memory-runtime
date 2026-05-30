@@ -10,7 +10,7 @@
   <img src="https://img.shields.io/badge/python-%E2%89%A53.10-blue?logo=python&logoColor=white" alt="Python">
   <img src="https://img.shields.io/badge/retrieval-TF--IDF%20%7C%20Embedding-green" alt="Retrieval">
   <img src="https://img.shields.io/badge/storage-JSON%20persistence-orange" alt="Storage">
-  <img src="https://img.shields.io/badge/tests-47%20passed-brightgreen" alt="Tests">
+  <img src="https://img.shields.io/badge/tests-46%20passed-brightgreen" alt="Tests">
 </p>
 
 - 📝 **Project Status:** v1.0 — production-ready: persistence + embedding retrieval + REST API
@@ -53,7 +53,7 @@ Using LangChain? AutoGPT? A custom agent loop you wrote yourself? Import one cla
 
 ### Swappable retrieval engine
 
-Start with TF-IDF — zero external dependencies, zero API keys, zero cost. When you need stronger semantic understanding, switch to the Embedding engine with one parameter. Same interface, better matching, no refactoring.
+Start with TF-IDF — zero external dependencies, zero API keys, zero cost. Recall@5: 50.9%. When you need stronger semantic understanding, switch to the Embedding engine with one parameter. Recall@5: 82.2%. Same interface, better matching, no refactoring.
 
 ---
 
@@ -117,7 +117,7 @@ Start with TF-IDF — zero external dependencies, zero API keys, zero cost. When
 ## 📰 News
 
 - **2026-05-30** — Retrieval upgraded: char n-gram TF-IDF (Recall@5 50.9%) + Jaccard safety for consolidation (4/5 accuracy). Embedding engine: Recall@5 82.2%.
-- **2026-05-29** — v1.0 released: JSON persistence + EmbeddingRetriever via sentence-transformers. 47 tests passing.
+- **2026-05-29** — v1.0 released: JSON persistence + EmbeddingRetriever via sentence-transformers. 46 tests passing.
 - **2026-05-28** — v0.6 released: FastAPI REST service — 7 endpoints wrapping all 5 layers.
 - **2026-05-28** — v0.5 released: ContextBuilder with 3 templates, token budget control.
 - **2026-05-28** — v0.4 released: MemoryConsolidator — automatic similar memory detection & merge.
@@ -145,6 +145,7 @@ agent-memory-runtime/
 │   │   └── consolidator.py         # MemoryConsolidator: merge & dedup
 │   ├── context/
 │   │   └── builder.py              # ContextBuilder: prompt-ready text output
+│   ├── _stemmer.py                  # Lightweight English stemmer
 │   └── storage/                    # (future) additional backends
 ├── examples/
 │   ├── basic_usage.py              # v0.1: add & get_all
@@ -310,55 +311,7 @@ curl -X POST "http://127.0.0.1:8000/load?filepath=my_memories.json"
 
 ```bash
 pip install -e ".[dev]"
-python -m pytest tests/ -v
+python -m pytest tests/ -k "not embedding" -v
 ```
 
-```
-tests/test_api.py::test_add_memory PASSED
-tests/test_api.py::test_list_memories PASSED
-tests/test_api.py::test_get_memory PASSED
-tests/test_api.py::test_get_memory_not_found PASSED
-tests/test_api.py::test_delete_memory PASSED
-tests/test_api.py::test_delete_memory_not_found PASSED
-tests/test_api.py::test_search PASSED
-tests/test_api.py::test_search_invalid_strategy PASSED
-tests/test_api.py::test_consolidate PASSED
-tests/test_api.py::test_build_context PASSED
-tests/test_api.py::test_build_context_compact PASSED
-tests/test_api.py::test_save_and_load PASSED
-tests/test_api.py::test_search_embedding_engine PASSED
-tests/test_api.py::test_health_check PASSED
-tests/test_api.py::test_api_version PASSED
-tests/test_consolidation.py::test_consolidate_empty_store PASSED
-tests/test_consolidation.py::test_consolidate_single_memory PASSED
-tests/test_consolidation.py::test_consolidate_merges_similar PASSED
-tests/test_consolidation.py::test_consolidate_keeps_different PASSED
-tests/test_consolidation.py::test_high_threshold_preserves_more PASSED
-tests/test_consolidation.py::test_low_threshold_merges_more PASSED
-tests/test_consolidation.py::test_merge_preserves_longer_content PASSED
-tests/test_consolidation.py::test_merge_combines_non_overlapping_content PASSED
-tests/test_context.py::test_build_default_with_memories PASSED
-tests/test_context.py::test_build_empty PASSED
-tests/test_context.py::test_build_compact_groups_by_category PASSED
-tests/test_context.py::test_build_system_prompt PASSED
-tests/test_context.py::test_build_compact_empty PASSED
-tests/test_context.py::test_build_system_prompt_empty PASSED
-tests/test_context.py::test_token_budget_truncation PASSED
-tests/test_context.py::test_relative_time_formatting PASSED
-tests/test_persistence.py::test_save_and_load PASSED
-tests/test_persistence.py::test_auto_load_on_init PASSED
-tests/test_persistence.py::test_auto_save_on_add PASSED
-tests/test_persistence.py::test_auto_save_on_delete PASSED
-tests/test_persistence.py::test_auto_save_on_clear PASSED
-tests/test_persistence.py::test_nonexistent_file_no_error PASSED
-tests/test_ranking.py::test_rerank_empty PASSED
-tests/test_ranking.py::test_semantic_preserves_order PASSED
-tests/test_ranking.py::test_recency_boosts_newer PASSED
-tests/test_ranking.py::test_hybrid_combines_scores PASSED
-tests/test_ranking.py::test_missing_created_at_uses_default PASSED
-tests/test_ranking.py::test_unknown_strategy_raises PASSED
-tests/test_retrieval.py::test_search_returns_relevant_results PASSED
-tests/test_retrieval.py::test_search_empty_store PASSED
-tests/test_retrieval.py::test_search_respects_top_k PASSED
-tests/test_retrieval.py::test_results_have_scores PASSED
-```
+46 tests across 6 modules: API (14), persistence (6), retrieval (4), ranking (6), consolidation (8), context (8). One embedding test requires `sentence-transformers` and is skipped by default.

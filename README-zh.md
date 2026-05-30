@@ -10,7 +10,7 @@
   <img src="https://img.shields.io/badge/python-%E2%89%A53.10-blue?logo=python&logoColor=white" alt="Python">
   <img src="https://img.shields.io/badge/retrieval-TF--IDF%20%7C%20Embedding-green" alt="Retrieval">
   <img src="https://img.shields.io/badge/storage-JSON%20persistence-orange" alt="Storage">
-  <img src="https://img.shields.io/badge/tests-47%20passed-brightgreen" alt="Tests">
+  <img src="https://img.shields.io/badge/tests-46%20passed-brightgreen" alt="Tests">
 </p>
 
 - 📝 **项目状态:** v1.0 — 可投产：持久化存储 + Embedding 检索 + REST API
@@ -53,7 +53,7 @@ LLM Agent 普遍面临四个问题：
 
 ### 检索引擎可替换
 
-当前用 TF-IDF 起步——零外部依赖、零 API 密钥、零成本。需要更强的语义理解时，一个参数切换到 Embedding 引擎。接口不变，能力升级，不需要重构。
+当前用 TF-IDF 起步——零外部依赖、零 API 密钥、零成本，Recall@5 50.9%。需要更强的语义理解时，一个参数切换到 Embedding 引擎，Recall@5 82.2%。接口不变，能力升级，不需要重构。
 
 ---
 
@@ -117,7 +117,7 @@ LLM Agent 普遍面临四个问题：
 ## 📰 News
 
 - **2026-05-30** — 检索升级：字符 n-gram TF-IDF（Recall@5 50.9%）+ Jaccard 安全检查（合并准确率 4/5）。Embedding 引擎：Recall@5 82.2%。
-- **2026-05-29** — v1.0 发布：JSON 持久化 + EmbeddingRetriever（sentence-transformers），47 个测试全部通过。
+- **2026-05-29** — v1.0 发布：JSON 持久化 + EmbeddingRetriever（sentence-transformers），46 个测试全部通过。
 - **2026-05-28** — v0.6 发布：FastAPI REST 服务——7 个端点覆盖全部 5 层。
 - **2026-05-28** — v0.5 发布：ContextBuilder，3 种模板，Token 预算控制。
 - **2026-05-28** — v0.4 发布：MemoryConsolidator——自动检测并合并相似记忆。
@@ -145,6 +145,7 @@ agent-memory-runtime/
 │   │   └── consolidator.py         # MemoryConsolidator: 合并 + 去重
 │   ├── context/
 │   │   └── builder.py              # ContextBuilder: prompt 文本输出
+│   ├── _stemmer.py                  # 轻量英文词干提取器
 │   └── storage/                    # （未来）更多存储后端
 ├── examples/
 │   ├── basic_usage.py              # v0.1: add & get_all
@@ -308,55 +309,7 @@ curl -X POST "http://127.0.0.1:8000/load?filepath=my_memories.json"
 
 ```bash
 pip install -e ".[dev]"
-python -m pytest tests/ -v
+python -m pytest tests/ -k "not embedding" -v
 ```
 
-```
-tests/test_api.py::test_add_memory PASSED
-tests/test_api.py::test_list_memories PASSED
-tests/test_api.py::test_get_memory PASSED
-tests/test_api.py::test_get_memory_not_found PASSED
-tests/test_api.py::test_delete_memory PASSED
-tests/test_api.py::test_delete_memory_not_found PASSED
-tests/test_api.py::test_search PASSED
-tests/test_api.py::test_search_invalid_strategy PASSED
-tests/test_api.py::test_consolidate PASSED
-tests/test_api.py::test_build_context PASSED
-tests/test_api.py::test_build_context_compact PASSED
-tests/test_api.py::test_save_and_load PASSED
-tests/test_api.py::test_search_embedding_engine PASSED
-tests/test_api.py::test_health_check PASSED
-tests/test_api.py::test_api_version PASSED
-tests/test_consolidation.py::test_consolidate_empty_store PASSED
-tests/test_consolidation.py::test_consolidate_single_memory PASSED
-tests/test_consolidation.py::test_consolidate_merges_similar PASSED
-tests/test_consolidation.py::test_consolidate_keeps_different PASSED
-tests/test_consolidation.py::test_high_threshold_preserves_more PASSED
-tests/test_consolidation.py::test_low_threshold_merges_more PASSED
-tests/test_consolidation.py::test_merge_preserves_longer_content PASSED
-tests/test_consolidation.py::test_merge_combines_non_overlapping_content PASSED
-tests/test_context.py::test_build_default_with_memories PASSED
-tests/test_context.py::test_build_empty PASSED
-tests/test_context.py::test_build_compact_groups_by_category PASSED
-tests/test_context.py::test_build_system_prompt PASSED
-tests/test_context.py::test_build_compact_empty PASSED
-tests/test_context.py::test_build_system_prompt_empty PASSED
-tests/test_context.py::test_token_budget_truncation PASSED
-tests/test_context.py::test_relative_time_formatting PASSED
-tests/test_persistence.py::test_save_and_load PASSED
-tests/test_persistence.py::test_auto_load_on_init PASSED
-tests/test_persistence.py::test_auto_save_on_add PASSED
-tests/test_persistence.py::test_auto_save_on_delete PASSED
-tests/test_persistence.py::test_auto_save_on_clear PASSED
-tests/test_persistence.py::test_nonexistent_file_no_error PASSED
-tests/test_ranking.py::test_rerank_empty PASSED
-tests/test_ranking.py::test_semantic_preserves_order PASSED
-tests/test_ranking.py::test_recency_boosts_newer PASSED
-tests/test_ranking.py::test_hybrid_combines_scores PASSED
-tests/test_ranking.py::test_missing_created_at_uses_default PASSED
-tests/test_ranking.py::test_unknown_strategy_raises PASSED
-tests/test_retrieval.py::test_search_returns_relevant_results PASSED
-tests/test_retrieval.py::test_search_empty_store PASSED
-tests/test_retrieval.py::test_search_respects_top_k PASSED
-tests/test_retrieval.py::test_results_have_scores PASSED
-```
+46 个测试，覆盖 6 个模块：API（14）、持久化（6）、检索（4）、排序（6）、合并（8）、上下文（8）。1 个 Embedding 测试需要 `sentence-transformers`，默认跳过。
